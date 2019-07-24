@@ -28,7 +28,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
-#include "include/half.hpp"
+#include "libhalf/include/half.hpp"
 #include <iostream>
 #include <cuda_runtime_api.h>
 #include "header.h"
