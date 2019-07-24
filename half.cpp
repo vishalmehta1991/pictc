@@ -118,7 +118,7 @@ int main( int argc, char* argv[] )
   cudaErrCheck(cudaDeviceSynchronize());
   
   cudaErrCheck(cudaDeviceReset());
-  FILE *g = fopen("outputgpu.bin","wb");
+  /*  FILE *g = fopen("outputgpu.bin","wb");
 
   for(int i=0;i<nsteps;i++)
     {
@@ -127,7 +127,7 @@ int main( int argc, char* argv[] )
       fwrite(bb,sizeof(bb),1,g);
     }
   fclose(g);
-  
+  */
   return 0;
 }
 

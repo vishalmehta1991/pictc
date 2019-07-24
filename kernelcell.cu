@@ -30,6 +30,7 @@
 #define SKEW2 0
 #define NWARPS 2
 
+//Matrix vector product warp level using Tensor Core CUDA wmma API
 __device__ __forceinline__ void matrixvec_tensor(half *a, half *b, float *c) 
 {
   
@@ -47,6 +48,7 @@ __device__ __forceinline__ void matrixvec_tensor(half *a, half *b, float *c)
   nvcuda::wmma::store_matrix_sync(c , acc_frag, 32, nvcuda::wmma::mem_row_major);
   return;
 }
+
 __device__ __forceinline__ void calculate_scale(float px,float py,float pz,float minx,float miny,float minz,float maxx,float maxy,float maxz,float& alpha,float& beta,float& gamma)
 {
   //alpha*higher + (1-alpha)*lower
@@ -114,6 +116,7 @@ __device__ __forceinline__ void matmultid(half *X,half *Y,float *accmat,int tid)
   return;
 }
 
+//Main driver function to call GPU kernels
 void update_position_gpu(Cell *cell,particlearray& p,unsigned int Nparticles,float delt,int Nts,float *outx,float *outy,float *outz)
 {
   half *Tmat,*Smat;
@@ -146,7 +149,7 @@ void update_position_gpu(Cell *cell,particlearray& p,unsigned int Nparticles,flo
   return;
 }
 
-
+//Main GPU kernel that updates particle postion using mixed precision
 __global__ void update_position_gpu_kernel_cell(const Cell *cell,particlearray P,const __restrict__ half *Tmat,const __restrict__ half *Smat,const unsigned int Nparticles,const int Nts,const float delt,float *outx,float *outy,float *outz)
 {
   __shared__ half shTmat[8*16],shSmat[8*16],Pmatr[16*32*NWARPS];
@@ -155,11 +158,12 @@ __global__ void update_position_gpu_kernel_cell(const Cell *cell,particlearray P
   int warpoff = (int)(threadIdx.x / 32 );
   int warpoffp = warpoff * 16 * 32; 
   int warpoffa = warpoff * 8 * 32;
-  //The electric filed is put to zero. Edit the code to add it.
+
   float tx,ty,tz,vprimemag;
   float alpha,beta,gamma;
   float minx,miny,minz,maxx,maxy,maxz;
-  
+
+  //Load Tmat and Smat
   for(int i = threadIdx.x;i<8*16; i += blockDim.x)
     {
       shTmat[i] = Tmat[i];shSmat[i] = Smat[i];
@@ -171,15 +175,18 @@ __global__ void update_position_gpu_kernel_cell(const Cell *cell,particlearray P
       maxx = cell->maxx;maxy = cell->maxy;maxz = cell->maxz;
       for(int i=0;i<Nts;i++)
 	{
+	  //Scale float values; in-order to work in half precision
 	  calculate_scale(P.x[tid],P.y[tid],P.z[tid],minx,miny,minz,maxx,maxy,maxz,alpha,beta,gamma);
 	  fillpmat(&Pmatr[warpoffp],P.vx[tid],P.vy[tid],P.vz[tid],tid,alpha,beta);
-	 	  
+
+	  //Use regular matrix-vector vs Tensor Core for updating velocities.
 #ifdef TENSORCORE	  
 	  matrixvec_tensor(shTmat,&Pmatr[warpoffp],&accmatr[warpoffa]);
 	  cg::this_thread_block().sync();
 #else
 	  matmultid(shTmat,&Pmatr[warpoffp],&accmatr[warpoffa],tid);
-#endif	      
+#endif
+	  //Back convert and resacle
 	  dumpaccmat(&accmatr[warpoffa],tx,ty,tz,tid,gamma);
 	  tx *= -1; ty *= -1; tz *= -1;
 	  tx = P.vx[tid] + tx * P.vmag[tid];
@@ -190,7 +197,8 @@ __global__ void update_position_gpu_kernel_cell(const Cell *cell,particlearray P
 	  tx /= vprimemag; ty /= vprimemag; tz /= vprimemag;
 	  
 	  fillpmat(&Pmatr[warpoffp],tx,ty,tz,tid,alpha,beta);
-	  
+
+	  //Use regular matrix-vector vs Tensor Core for updating positions.
 #ifdef TENSORCORE	  
 	  matrixvec_tensor(shSmat,&Pmatr[warpoffp],&accmatr[warpoffa]);	 
 	  cg::this_thread_block().sync();
@@ -205,25 +213,22 @@ __global__ void update_position_gpu_kernel_cell(const Cell *cell,particlearray P
 	  tz = P.vz[tid] + tz * vprimemag;	  
 
 	  vprimemag = sqrt(tx*tx + ty*ty + tz*tz);
+	  //Update particle velcities magnitude and direction
 	  P.vmag[tid] = vprimemag;
 	  P.vx[tid] = (tx/vprimemag);
 	  P.vy[tid] = (ty/vprimemag);
 	  P.vz[tid] = (tz/vprimemag);
-
+	  
+	  //Update particle positions in float
 	  P.x[tid] += tx*delt;
 	  P.y[tid] += ty*delt;
 	  P.z[tid] += tz*delt;
-	  if(tid==0)
-	    {
-	      outx[i] = P.x[0];
-	      outy[i] = P.y[0];
-	      outz[i] = P.z[0];
-	    }
 	}  
     }
   return;
 }
 
+//Calculation and scaling for T matrix and S matrix; and convert to half
 void calculate_TmatSmat(half *Tmat,half *Smat,Cell &cell,float delt)
 {
   float tscal[3],tmag;
