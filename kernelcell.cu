@@ -57,6 +57,8 @@ __device__ __forceinline__ void calculate_scale(float px,float py,float pz,float
   gamma = (maxz - pz) / (maxz - minz);
   return;
 }
+
+//Fills matrix in shared memory and down converts to half
 __device__ __forceinline__ void fillpmat(half *Pmat,float vx,float vy,float vz,int tid,float alpha,float beta)
 {
   int colid = (int)(tid%32);
@@ -90,6 +92,8 @@ __device__ __forceinline__ void fillpmat(half *Pmat,float vx,float vy,float vz,i
   Pmat[colid + 96] = __float2half(0.0);
   return;
 }
+
+//Moves data to registers from Shared memory
 __device__ __forceinline__ void dumpaccmat(float *accmat,float &vx,float &vy,float &vz,int tid,float gamma)
 {
   int colid = (int)(tid%32);
@@ -99,6 +103,7 @@ __device__ __forceinline__ void dumpaccmat(float *accmat,float &vx,float &vy,flo
   return;
 }
 
+//Traditional matrix-vec product
 __device__ __forceinline__ void matmultid(half *X,half *Y,float *accmat,int tid)
 {
   int id = (int)(threadIdx.x % 32);
