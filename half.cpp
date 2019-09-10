@@ -118,19 +118,10 @@ int main( int argc, char* argv[] )
   cudaErrCheck(cudaDeviceSynchronize());
   
   cudaErrCheck(cudaDeviceReset());
-  /*  FILE *g = fopen("outputgpu.bin","wb");
-
-  for(int i=0;i<nsteps;i++)
-    {
-      float bb[3];  
-      bb[0] = outx[i]; bb[1] = outy[i]; bb[2] = outz[i]; 
-      fwrite(bb,sizeof(bb),1,g);
-    }
-  fclose(g);
-  */
   return 0;
 }
 
+//CPU version of borris transport. Not used in main code. only serves as reference implementation
 void update_position_borris(particle& p,magneticF& b)
 {
   //The electric filed is put to zero. Edit the code to add it.
@@ -202,6 +193,8 @@ void update_position_borris(particle& p,magneticF& b)
   
   return;
 }
+
+//CPU version of an implicit solver
 void update_position_implicit(particle& p,magneticF& b)
 {
   //There is no electric field in this solution

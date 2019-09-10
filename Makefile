@@ -6,7 +6,7 @@ FLAGS=-arch=sm_70 -Xcompiler=-fPIC -O3 -DTENSORCORE
 NOTFLAGS=-arch=sm_70 -Xcompiler=-fPIC -O3  
 all: half notensor
 
-half: half.cpp kernelcell.cu 
+tensor: half.cpp kernelcell.cu 
 	${COMPILER} -ccbin=${HOST_COMPILER} -c -o half.o half.cpp ${FLAGS}
 	${COMPILER} -ccbin=${HOST_COMPILER} -c -o kernel.o kernelcell.cu  ${FLAGS}
 	${COMPILER} -ccbin=${HOST_COMPILER} -o $@ *.o ${FLAGS} ${LINKER}
