@@ -11,8 +11,11 @@ Magnitudes are maintained in FP32 while directions are cast to FP16.
 Tensor core operates on FP16 inputs and accumulates in FP32.
 
 Compilation:
-Set CUDA_HOME 
+
+Set CUDA_HOME
+
 Tensor Core version: make tensor (sm_70+)
+
 Normal Half version: make notensor
 
 
