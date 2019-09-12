@@ -4,7 +4,7 @@ LINKER=-L${CUDA_HOME}/lib64
 COMPILER=${CUDA_HOME}/bin/nvcc
 FLAGS=-arch=sm_70 -Xcompiler=-fPIC -O3 -DTENSORCORE 
 NOTFLAGS=-arch=sm_70 -Xcompiler=-fPIC -O3  
-all: half notensor
+all: tensor notensor
 
 tensor: half.cpp kernelcell.cu 
 	${COMPILER} -ccbin=${HOST_COMPILER} -c -o half.o half.cpp ${FLAGS}
@@ -17,4 +17,4 @@ notensor: half.cpp kernelcell.cu
 	${COMPILER} -ccbin=${HOST_COMPILER} -o $@ *.o ${NOTFLAGS} ${LINKER}
 
 clean:
-	rm -f half *.o notensor
+	rm -f tensor *.o notensor
